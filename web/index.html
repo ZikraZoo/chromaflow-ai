@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Color Flood — Human vs A*</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">ALGORITHM PLAYGROUND</div>
+      <h1>COLOR FLOOD</h1>
+      <p>Can you beat the A* search?</p>
+      <div class="actions">
+        <button id="newGame" class="primary">NEW GAME</button>
+        <button id="replayBtn" class="secondary" disabled>REPLAY COMPARISON</button>
+      </div>
+    </section>
+
+    <section class="game-shell">
+      <div class="terminal-bar"><span></span><span></span><span></span><b>color-flood</b></div>
+      <div class="stats">
+        <div><small>SEED</small><strong id="seed">—</strong></div>
+        <div><small>A* TARGET</small><strong id="target">—</strong></div>
+        <div><small>YOUR MOVES</small><strong id="moves">0</strong></div>
+        <div><small>TILES</small><strong id="tiles">0 / 120</strong></div>
+      </div>
+      <div id="board" class="board" aria-label="Color Flood board"></div>
+      <div class="prompt">CHOOSE YOUR NEXT COLOR</div>
+      <div id="colors" class="colors"></div>
+      <div id="message" class="message">Flood the board from the top-left corner.</div>
+    </section>
+
+    <section id="replayPanel" class="replay hidden">
+      <div class="replay-head">
+        <div><span class="eyebrow">SIDE-BY-SIDE ANALYSIS</span><h2>AI OPTIMAL PATH vs YOUR PLAY</h2></div>
+        <button id="closeReplay" class="secondary">CLOSE</button>
+      </div>
+      <div class="compare-boards">
+        <div><h3>A* OPTIMAL</h3><div id="aiBoard" class="board small"></div></div>
+        <div><h3>YOUR PLAY</h3><div id="humanBoard" class="board small"></div></div>
+      </div>
+      <div class="replay-controls">
+        <button id="prevStep" class="secondary">← PREVIOUS</button>
+        <strong id="stepLabel">STEP 0</strong>
+        <button id="nextStep" class="primary">NEXT →</button>
+      </div>
+      <p id="replayText" class="message"></p>
+    </section>
+
+    <footer>
+      <span>Python source: <code>game.py</code></span>
+      <span>Browser edition: <code>web/</code></span>
+    </footer>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>

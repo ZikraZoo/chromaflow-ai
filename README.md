@@ -1,25 +1,68 @@
-# Terminal Color Flood Game with Greedy AI Solver
+# 🎨 Color Flood — Human vs A*
 
-An interactive, terminal-based puzzle game built in Python. The game uses a graph traversal algorithm (**Breadth-First Search**) to track board state changes and features an integrated **Greedy Look-Ahead AI Solver** that calculates the minimum number of moves required to clear the board, challenging players to optimize their strategy.
+A terminal-style Color Flood puzzle where you try to solve a board in as few moves as possible while competing against an A* search solver.
 
-## 🕹️ Gameplay Mechanics
-The player starts at the top-left tile of a randomized, 15x8 color matrix. 
-* By selecting a color from the choices provided, the player "floods" their connected territory.
-* Any adjacent tile matching the chosen color becomes captured into the player's territory block.
-* The goal is to flood the entire board into a single solid color in fewer moves than the AI.
+## 🎮 Play it in your browser
 
----
+**[▶ PLAY COLOR FLOOD](./web/index.html)**
 
-## 🚀 Key Technical Features
-* **Graph Traversal (BFS Component):** Implemented a queue-based `get_connected_component` algorithm to map matching neighbor nodes dynamically `[(0, 1), (1, 0), (0, -1), (-1, 0)]` across a custom matrix dictionary coordinate map.
-* **Simulated Look-Ahead AI:** The AI agent clones the existing board configuration, executes all 6 available color choices simultaneously, analyzes the state expansions, and dynamically builds a game-winning array map using a greedy optimization strategy.
-* **Replay & Animation Framework:** Utilizes Windows terminal sub-layer interfaces via `bext` alongside native OS system state wipes to render animations without interface scrolling or trailing string artifacts.
+When this repository is published with GitHub Pages, the browser game becomes a normal public link — no Python, VS Code, or installation is required.
 
----
+## 🧠 What is inside?
 
-## 🛠️ Setup & Local Execution
+- **Flood-fill / BFS** to determine the connected flooded region.
+- **Greedy search** as a fast baseline solver.
+- **A\* search** to find an optimal path for the puzzle under the game's move model.
+- **Human vs AI comparison** using the same initial board.
+- **Side-by-side replay** showing the AI's choices against the player's choices.
+- **Seeded boards** so a puzzle can be reproduced.
+- Original Python terminal implementation plus a browser implementation.
 
-1. Clone this repository:
-   ```bash
-   git clone [https://github.com/ZikraZoo/terminal-color-flood-game.git](https://github.com/ZikraZoo/terminal-color-flood-game.git)
-   cd terminal-color-flood-game
+## 📁 Project structure
+
+```text
+color-flood-ai/
+├── game.py                 # Original Python terminal game + benchmark suite
+├── web/
+│   ├── index.html          # Browser UI
+│   ├── style.css           # Terminal-inspired styling
+│   └── game.js             # Browser game + BFS/Greedy/A* logic
+├── .github/workflows/
+│   └── pages.yml           # Automatic GitHub Pages deployment
+└── README.md
+```
+
+## 💻 Run the original Python version
+
+The original project is a terminal application. It uses `bext` for colored terminal output.
+
+```bash
+pip install bext
+python game.py
+```
+
+Benchmark mode:
+
+```bash
+python game.py --benchmark --trials 10
+```
+
+You can also test a fixed board seed:
+
+```bash
+python game.py --seed 12345
+```
+
+## 🤖 Algorithms
+
+The game starts from the top-left tile. A flood-fill finds all connected tiles of the current color. Choosing a new color repaints that connected component, potentially absorbing adjacent regions of the chosen color.
+
+The A* solver treats each board configuration as a state and uses the number of distinct colors remaining outside the flooded region as its heuristic. It explores candidate color changes until the board is solved, with a node limit and greedy fallback in the original implementation.
+
+## 🌐 Browser version
+
+The browser edition is deliberately dependency-free: plain HTML, CSS and JavaScript. That makes it suitable for GitHub Pages and means visitors only need a web browser.
+
+## 📌 Portfolio note
+
+The Python file is the original implementation. The `web/` version adapts the same game concepts to browser controls so a visitor can play the project immediately while still being able to inspect the Python source.
