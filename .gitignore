@@ -1,0 +1,13 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local human gameplay statistics
+human_data.json
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/

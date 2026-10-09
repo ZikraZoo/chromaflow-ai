@@ -22,13 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Pages
+        uses: actions/checkout@v7
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-      - name: Upload site
+      - name: Upload browser site
         uses: actions/upload-pages-artifact@v4
         with:
-          path: './web'
-      - name: Deploy
+          path: ./web
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

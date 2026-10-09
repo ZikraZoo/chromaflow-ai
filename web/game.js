@@ -1,110 +1,499 @@
+"use strict";
+
+// The browser edition follows the Python game's 15x8, six-color flood-fill rules.
 const WIDTH = 15;
 const HEIGHT = 8;
-const COLORS = ['r','g','b','y','c','p'];
-const NAMES = ['RED','GREEN','BLUE','YELLOW','CYAN','PURPLE'];
-const state = { board:null, initial:null, seed:null, target:0, moves:[], gameOver:false, replay:null };
+const CELL_COUNT = WIDTH * HEIGHT;
+const SEARCH_NODE_LIMIT = 15000;
+const COLORS = ["red", "green", "blue", "yellow", "cyan", "purple"];
+const COLOR_KEYS = ["R", "G", "B", "Y", "C", "P"];
+const NAMES = ["RED", "GREEN", "BLUE", "YELLOW", "CYAN", "PURPLE"];
+const state = {
+  board: null,
+  initial: null,
+  seed: null,
+  targetPath: null,
+  targetFallback: false,
+  targetExpanded: 0,
+  searchProgress: 0,
+  moves: [],
+  playerMoves: [],
+  gameOver: false,
+  playback: false,
+  mode: "human",
+  replay: null,
+  generation: 0,
+  playbackToken: 0,
+  hint: null
+};
 
-const $ = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// A small seeded generator keeps a shown browser seed reproducible in this edition.
 function seededRandom(seed) {
-  let s = seed >>> 0;
-  return () => { s = (1664525 * s + 1013904223) >>> 0; return s / 4294967296; };
+  let value = seed >>> 0;
+  return () => {
+    value = (Math.imul(1664525, value) + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
 }
-function makeBoard(seed) {
-  const rand = seededRandom(seed), b = Array.from({length:HEIGHT}, () => Array(WIDTH).fill(0));
-  for (let y=0;y<HEIGHT;y++) for (let x=0;x<WIDTH;x++) b[y][x] = Math.floor(rand()*6);
-  for (let i=0;i<WIDTH*HEIGHT;i++) {
-    const x = Math.floor(rand()*(WIDTH-1)), y = Math.floor(rand()*HEIGHT);
-    b[y][x+1] = b[y][x];
-  }
-  return b;
-}
-function clone(b) { return b.map(row => row.slice()); }
-function neighbors(x,y) { return [[0,1],[1,0],[0,-1],[-1,0]].map(([dx,dy])=>[x+dx,y+dy]).filter(([nx,ny])=>nx>=0&&nx<WIDTH&&ny>=0&&ny<HEIGHT); }
-function blob(b) {
-  const target=b[0][0], seen=new Set(), q=[[0,0]];
-  while(q.length){ const [x,y]=q.shift(), k=`${x},${y}`; if(seen.has(k)) continue; seen.add(k); for(const [nx,ny] of neighbors(x,y)) if(b[ny][nx]===target&&!seen.has(`${nx},${ny}`)) q.push([nx,ny]); }
-  return seen;
-}
-function flood(b,color) { const out=clone(b), cells=blob(out); for(const k of cells){const [x,y]=k.split(',').map(Number); out[y][x]=color;} return out; }
-function solved(b) { return blob(b).size === WIDTH*HEIGHT; }
-function key(b) { return b.flat().join(''); }
-function uniqueRemaining(b,cells) { const set=new Set(); for(let y=0;y<HEIGHT;y++) for(let x=0;x<WIDTH;x++) if(!cells.has(`${x},${y}`)) set.add(b[y][x]); return set.size; }
 
-function greedy(b) {
-  let cur=clone(b), path=[];
-  while(!solved(cur)) {
-    const current=cur[0][0]; let best=current, bestSize=blob(cur).size;
-    for(let c=0;c<6;c++) if(c!==current){ const next=flood(cur,c), size=blob(next).size; if(size>bestSize){bestSize=size;best=c;} }
-    if(best===current){ const choices=[0,1,2,3,4,5].filter(c=>c!==current); best=choices[Math.floor(Math.random()*choices.length)]; }
-    path.push(best); cur=flood(cur,best);
+function makeBoard(seed) {
+  const random = seededRandom(seed);
+  const board = new Uint8Array(CELL_COUNT);
+
+  // Match the Python generator's column-first fill order and right-neighbor smoothing.
+  for (let x = 0; x < WIDTH; x++) {
+    for (let y = 0; y < HEIGHT; y++) {
+      board[y * WIDTH + x] = Math.floor(random() * COLORS.length);
+    }
+  }
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const x = Math.floor(random() * (WIDTH - 1));
+    const y = Math.floor(random() * HEIGHT);
+    board[y * WIDTH + x + 1] = board[y * WIDTH + x];
+  }
+  return board;
+}
+
+function clone(board) {
+  return board.slice();
+}
+
+// Return indices in the top-left connected component. Marking cells when enqueued
+// avoids duplicate queue entries and keeps the search faster than string coordinates.
+function blobCells(board) {
+  const target = board[0];
+  const seen = new Uint8Array(CELL_COUNT);
+  const queue = new Int16Array(CELL_COUNT);
+  let head = 0;
+  let tail = 0;
+  queue[tail++] = 0;
+  seen[0] = 1;
+
+  while (head < tail) {
+    const index = queue[head++];
+    const x = index % WIDTH;
+    const y = Math.floor(index / WIDTH);
+
+    if (y > 0) enqueue(index - WIDTH);
+    if (x < WIDTH - 1) enqueue(index + 1);
+    if (y < HEIGHT - 1) enqueue(index + WIDTH);
+    if (x > 0) enqueue(index - 1);
+
+    function enqueue(next) {
+      if (!seen[next] && board[next] === target) {
+        seen[next] = 1;
+        queue[tail++] = next;
+      }
+    }
+  }
+  return queue.subarray(0, tail);
+}
+
+function floodedSize(board) {
+  return blobCells(board).length;
+}
+
+function isSolved(board) {
+  return floodedSize(board) === CELL_COUNT;
+}
+
+function boardKey(board) {
+  // Tile values are single digits from 0 to 5, so this is an unambiguous compact key.
+  return board.join("");
+}
+
+function flood(board, color) {
+  const next = clone(board);
+  for (const index of blobCells(board)) next[index] = color;
+  return next;
+}
+
+function uniqueRemaining(board, cells) {
+  const inBlob = new Uint8Array(CELL_COUNT);
+  for (const index of cells) inBlob[index] = 1;
+  const colors = new Uint8Array(COLORS.length);
+  let count = 0;
+  for (let i = 0; i < CELL_COUNT; i++) {
+    if (!inBlob[i] && !colors[board[i]]) {
+      colors[board[i]] = 1;
+      count++;
+    }
+  }
+  return count;
+}
+
+function comparePriority(a, b) {
+  return a.f - b.f || a.g - b.g || a.sequence - b.sequence;
+}
+
+// A binary min-heap avoids sorting the full A* frontier after every expansion.
+class MinHeap {
+  constructor() { this.items = []; }
+  get size() { return this.items.length; }
+  push(value) {
+    const items = this.items;
+    items.push(value);
+    let index = items.length - 1;
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2);
+      if (comparePriority(items[parent], value) <= 0) break;
+      items[index] = items[parent];
+      index = parent;
+    }
+    items[index] = value;
+  }
+  pop() {
+    const items = this.items;
+    if (!items.length) return null;
+    const root = items[0];
+    const last = items.pop();
+    if (items.length) {
+      let index = 0;
+      while (true) {
+        const left = index * 2 + 1;
+        const right = left + 1;
+        if (left >= items.length) break;
+        let child = left;
+        if (right < items.length && comparePriority(items[right], items[left]) < 0) child = right;
+        if (comparePriority(last, items[child]) <= 0) break;
+        items[index] = items[child];
+        index = child;
+      }
+      items[index] = last;
+    }
+    return root;
+  }
+}
+
+function greedy(startBoard, random = seededRandom(0xC01DF100)) {
+  let board = clone(startBoard);
+  const path = [];
+  let guard = 0;
+  while (!isSolved(board) && guard < CELL_COUNT * COLORS.length) {
+    guard++;
+    const currentColor = board[0];
+    let bestColor = currentColor;
+    let bestSize = floodedSize(board);
+    for (let color = 0; color < COLORS.length; color++) {
+      if (color === currentColor) continue;
+      const next = flood(board, color);
+      const size = floodedSize(next);
+      if (size > bestSize) {
+        bestSize = size;
+        bestColor = color;
+      }
+    }
+    // As in the Python version, change color even when no immediate blob growth occurs.
+    if (bestColor === currentColor) {
+      const choices = COLORS.map((_, color) => color).filter((color) => color !== currentColor);
+      bestColor = choices[Math.floor(random() * choices.length)];
+    }
+    path.push(bestColor);
+    board = flood(board, bestColor);
   }
   return path;
 }
-function astar(start,maxNodes=15000) {
-  const initial=clone(start), h0=uniqueRemaining(initial,blob(initial));
-  let queue=[{f:h0,g:0,b:initial,path:[]}], visited=new Set([key(initial)]), expanded=0;
-  while(queue.length){
-    queue.sort((a,b)=>a.f-b.f || a.g-b.g);
-    const cur=queue.shift(); expanded++;
-    if(expanded>maxNodes) return cur.path.concat(greedy(cur.b));
-    if(solved(cur.b)) return cur.path;
-    const color=cur.b[0][0];
-    for(let c=0;c<6;c++) if(c!==color){
-      const nb=flood(cur.b,c), k=key(nb); if(visited.has(k)) continue;
-      visited.add(k); const g=cur.g+1, h=uniqueRemaining(nb,blob(nb));
-      queue.push({f:g+h,g,b:nb,path:cur.path.concat(c)});
+
+async function astar(startBoard, maxNodes = SEARCH_NODE_LIMIT, onProgress = null, shouldCancel = () => false) {
+  const initial = clone(startBoard);
+  const startCells = blobCells(initial);
+  const startH = uniqueRemaining(initial, startCells);
+  const frontier = new MinHeap();
+  let sequence = 0;
+  frontier.push({ f: startH, g: 0, sequence, board: initial, path: [] });
+  const visited = new Set([boardKey(initial)]);
+  let expanded = 0;
+
+  while (frontier.size) {
+    if (shouldCancel()) return { path: [], expanded, fallback: false, cancelled: true };
+    const current = frontier.pop();
+    expanded++;
+
+    if (expanded > maxNodes) {
+      const fallbackRandom = seededRandom((startBoard[0] + expanded + 0xA57A) >>> 0);
+      return {
+        path: current.path.concat(greedy(current.board, fallbackRandom)),
+        expanded,
+        fallback: true,
+        cancelled: false
+      };
+    }
+    if (isSolved(current.board)) {
+      return { path: current.path, expanded, fallback: false, cancelled: false };
+    }
+
+    const currentColor = current.board[0];
+    for (let color = 0; color < COLORS.length; color++) {
+      if (color === currentColor) continue;
+      const nextBoard = flood(current.board, color);
+      const key = boardKey(nextBoard);
+      if (visited.has(key)) continue;
+      visited.add(key);
+      const g = current.g + 1;
+      const h = uniqueRemaining(nextBoard, blobCells(nextBoard));
+      sequence++;
+      frontier.push({ f: g + h, g, sequence, board: nextBoard, path: current.path.concat(color) });
+    }
+
+    // Yield regularly so rendering and user input remain responsive while A* searches.
+    if (expanded % 80 === 0) {
+      if (onProgress) onProgress(expanded);
+      await wait(0);
     }
   }
-  return [];
+  return { path: [], expanded, fallback: false, cancelled: false };
 }
 
-function renderBoard(el,b) {
-  el.innerHTML='';
-  for(let y=0;y<HEIGHT;y++) for(let x=0;x<WIDTH;x++){
-    const d=document.createElement('div'); d.className=`tile ${COLORS[b[y][x]]}`; el.appendChild(d);
+function renderBoard(element, board) {
+  const fragment = document.createDocumentFragment();
+  for (let index = 0; index < CELL_COUNT; index++) {
+    const tile = document.createElement("div");
+    tile.className = `tile ${COLORS[board[index]]}${index === 0 ? " start-tile" : ""}`;
+    tile.setAttribute("role", "gridcell");
+    tile.setAttribute("aria-label", `${NAMES[board[index]]}${index === 0 ? ", flood start" : ""}`);
+    if (index === 0) tile.title = "Flood starts here";
+    fragment.appendChild(tile);
+  }
+  element.replaceChildren(fragment);
+}
+
+function renderMain() {
+  renderBoard($("board"), state.board);
+  $("seed").textContent = state.seed;
+  $("target").textContent = state.targetPath
+    ? `${state.targetPath.length}${state.targetFallback ? "*" : ""} moves`
+    : state.searchProgress ? `${state.searchProgress.toLocaleString()} nodes` : "Searching…";
+  $("moves").textContent = state.moves.length;
+  $("movesLabel").textContent = state.mode === "human" ? "YOUR MOVES" : `${state.mode.toUpperCase()} MOVES`;
+  $("tiles").textContent = `${floodedSize(state.board)} / ${CELL_COUNT}`;
+
+  const pill = $("statusPill");
+  pill.classList.toggle("is-solved", state.gameOver);
+  pill.classList.toggle("is-working", state.playback || !state.targetPath);
+  pill.textContent = state.playback ? `${state.mode.toUpperCase()} PLAYBACK` : state.gameOver ? "SOLVED" : state.mode === "human" ? "YOUR TURN" : "SOLVER FINISHED";
+
+  document.querySelectorAll(".color-btn").forEach((button) => {
+    const color = Number(button.dataset.color);
+    button.disabled = state.gameOver || state.playback || state.mode !== "human" || color === state.board[0];
+    button.classList.toggle("suggested", state.hint === color && !button.disabled);
+  });
+  $("undoButton").disabled = state.mode !== "human" || state.playerMoves.length === 0 || state.playback;
+  $("replayButton").disabled = !state.targetPath || state.playerMoves.length === 0 || state.playback;
+  $("astarSolveButton").disabled = !state.targetPath || state.playback;
+  $("greedySolveButton").disabled = state.playback;
+}
+
+function setupColors() {
+  const container = $("colors");
+  container.replaceChildren();
+  COLORS.forEach((colorName, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `color-btn ${colorName}`;
+    button.dataset.color = String(index);
+    button.textContent = `${COLOR_KEYS[index]} · ${NAMES[index]}`;
+    button.setAttribute("aria-label", `Choose ${NAMES[index]} using ${COLOR_KEYS[index]}`);
+    button.addEventListener("click", () => play(index));
+    container.appendChild(button);
+  });
+}
+
+function clearHint() {
+  state.hint = null;
+  document.querySelectorAll(".color-btn").forEach((button) => button.classList.remove("suggested"));
+}
+
+function play(color) {
+  if (state.gameOver || state.playback || state.mode !== "human" || color === state.board[0]) return;
+  clearHint();
+  state.board = flood(state.board, color);
+  state.moves.push(color);
+  state.playerMoves = state.moves.slice();
+  renderMain();
+  if (isSolved(state.board)) {
+    state.gameOver = true;
+    renderMain();
+    const baseline = state.targetPath ? state.targetPath.length : null;
+    const scoreText = baseline === null ? "The A* reference is still being calculated." : `The A* reference path uses ${baseline} moves${state.targetFallback ? " (with Greedy completion)" : ""}.`;
+    $("message").textContent = `Solved in ${state.moves.length} moves. ${scoreText}`;
+  } else {
+    $("message").textContent = `Good move. Your flooded region now contains ${floodedSize(state.board)} of ${CELL_COUNT} tiles.`;
   }
 }
-function renderMain() {
-  renderBoard($('board'),state.board);
-  $('seed').textContent=state.seed;
-  $('target').textContent=`${state.target} moves`;
-  $('moves').textContent=state.moves.length;
-  $('tiles').textContent=`${blob(state.board).size} / ${WIDTH*HEIGHT}`;
-  document.querySelectorAll('.color-btn').forEach(b=>b.disabled=state.gameOver || Number(b.dataset.color)===state.board[0][0]);
-}
-function setupColors(){
-  const el=$('colors'); el.innerHTML='';
-  COLORS.forEach((c,i)=>{const b=document.createElement('button'); b.className=`color-btn ${c}`; b.dataset.color=i; b.textContent=`[${NAMES[i][0]}] ${NAMES[i]}`; b.onclick=()=>play(i); el.appendChild(b);});
-}
-function play(color){
-  if(state.gameOver || color===state.board[0][0]) return;
-  state.board=flood(state.board,color); state.moves.push(color); renderMain();
-  if(solved(state.board)) finish(); else $('message').textContent=`Nice. ${blob(state.board).size} tiles captured.`;
-}
-function finish(){
-  state.gameOver=true; renderMain(); $('replayBtn').disabled=false;
-  const diff=state.moves.length-state.target;
-  $('message').textContent=diff<=0 ? `INCREDIBLE — you matched or beat the A* target of ${state.target} moves!` : `Solved in ${state.moves.length} moves. A* did it in ${state.target}. You were ${diff} move${diff===1?'':'s'} away.`;
-}
-function newGame(){
-  state.seed=Math.floor(Math.random()*100000)+1; state.board=makeBoard(state.seed); state.initial=clone(state.board); state.moves=[]; state.gameOver=false; state.replay=null;
-  state.target=astar(state.initial).length; $('replayBtn').disabled=true; $('replayPanel').classList.add('hidden'); $('message').textContent='Flood the board from the top-left corner.'; renderMain();
+
+function undoMove() {
+  if (state.mode !== "human" || !state.playerMoves.length || state.playback) return;
+  state.playerMoves.pop();
+  state.moves = state.playerMoves.slice();
+  state.board = boardAt(state.initial, state.moves, state.moves.length);
+  state.gameOver = false;
+  clearHint();
+  renderMain();
+  $("message").textContent = "Last move undone. Try a different color.";
 }
 
-function openReplay(){
-  state.replay={ai:astar(state.initial),human:state.moves.slice(),step:0}; $('replayPanel').classList.remove('hidden'); renderReplay(); $('replayPanel').scrollIntoView({behavior:'smooth'});
+function boardAt(start, path, step) {
+  let board = clone(start);
+  for (let i = 0; i < Math.min(step, path.length); i++) board = flood(board, path[i]);
+  return board;
 }
-function boardAt(path,step){ let b=clone(state.initial); for(let i=0;i<Math.min(step,path.length);i++) b=flood(b,path[i]); return b; }
-function renderReplay(){
-  const r=state.replay, max=Math.max(r.ai.length,r.human.length); r.step=Math.max(0,Math.min(r.step,max));
-  renderBoard($('aiBoard'),boardAt(r.ai,r.step)); renderBoard($('humanBoard'),boardAt(r.human,r.step));
-  $('stepLabel').textContent=`STEP ${r.step} / ${max}`;
-  $('prevStep').disabled=r.step===0; $('nextStep').disabled=r.step===max;
-  const ai=r.step>0&&r.step<=r.ai.length?NAMES[r.ai[r.step-1]]:'START'; const hu=r.step>0&&r.step<=r.human.length?NAMES[r.human[r.step-1]]:'START';
-  $('replayText').textContent=`Step ${r.step}: A* chose ${ai}; you chose ${hu}.`;
+
+function hintMove() {
+  if (state.gameOver || state.playback) return;
+  const random = seededRandom((state.seed ^ (state.moves.length + 0x6A09E667)) >>> 0);
+  const path = greedy(state.board, random);
+  const color = path[0];
+  state.hint = color;
+  renderMain();
+  $("message").textContent = `Greedy suggests ${NAMES[color]}. It chooses the move with the largest immediate gain in captured tiles.`;
 }
-$('newGame').onclick=newGame; $('replayBtn').onclick=openReplay; $('closeReplay').onclick=()=> $('replayPanel').classList.add('hidden');
-$('prevStep').onclick=()=>{state.replay.step--;renderReplay()}; $('nextStep').onclick=()=>{state.replay.step++;renderReplay()};
-document.addEventListener('keydown',e=>{const map={r:0,g:1,b:2,y:3,c:4,p:5}; if(map[e.key.toLowerCase()]!==undefined) play(map[e.key.toLowerCase()]);});
-setupColors(); newGame();
+
+async function playSolver(path, label) {
+  if (state.playback || !path || !path.length) return;
+  const token = ++state.playbackToken;
+  state.playback = true;
+  state.mode = label;
+  state.board = clone(state.initial);
+  state.moves = [];
+  state.gameOver = false;
+  state.hint = null;
+  $("replayPanel").classList.add("hidden");
+  $("message").textContent = `${label} is replaying its solution from the original board…`;
+  renderMain();
+
+  for (const color of path) {
+    if (token !== state.playbackToken) return;
+    await wait(110);
+    if (token !== state.playbackToken) return;
+    state.board = flood(state.board, color);
+    state.moves.push(color);
+    renderMain();
+  }
+
+  state.playback = false;
+  state.gameOver = isSolved(state.board);
+  renderMain();
+  $("message").textContent = `${label} completed the board in ${state.moves.length} moves. Your human move sequence is retained for comparison.`;
+  if (!state.gameOver) $("message").textContent += " The search returned an incomplete path; try a new board or inspect the solver limit.";
+}
+
+function newGame() {
+  state.generation++;
+  const generation = state.generation;
+  state.playbackToken++;
+  state.playback = false;
+  state.seed = Math.floor(Math.random() * 999999) + 1;
+  state.initial = makeBoard(state.seed);
+  state.board = clone(state.initial);
+  state.targetPath = null;
+  state.targetFallback = false;
+  state.targetExpanded = 0;
+  state.searchProgress = 0;
+  state.moves = [];
+  state.playerMoves = [];
+  state.gameOver = false;
+  state.mode = "human";
+  state.replay = null;
+  state.hint = null;
+  $("replayPanel").classList.add("hidden");
+  $("message").textContent = "Choose a color to grow the flooded region. The A* reference is calculating in the background.";
+  $("baselineNote").textContent = "A* reference is being calculated. You can start playing while it searches.";
+  renderMain();
+
+  // Capture this board so rapid clicks on New Board cannot start duplicate searches
+  // against a later board by accident.
+  const initialForSearch = clone(state.initial);
+
+  // Give the browser one paint before starting the CPU work.
+  setTimeout(async () => {
+    const result = await astar(
+      initialForSearch,
+      SEARCH_NODE_LIMIT,
+      (expanded) => {
+        if (generation !== state.generation) return;
+        state.searchProgress = expanded;
+        $("target").textContent = `${expanded.toLocaleString()} nodes`;
+      },
+      () => generation !== state.generation
+    );
+    if (generation !== state.generation || result.cancelled) return;
+    state.targetPath = result.path;
+    state.targetFallback = result.fallback;
+    state.targetExpanded = result.expanded;
+    state.searchProgress = result.expanded;
+    $("baselineNote").textContent = result.fallback
+      ? `Search reached its ${SEARCH_NODE_LIMIT.toLocaleString()}-node limit and used Greedy for the rest. The reference is not guaranteed optimal.`
+      : `A* found a path within the ${SEARCH_NODE_LIMIT.toLocaleString()}-node limit (${result.expanded.toLocaleString()} expanded nodes).`;
+    renderMain();
+  }, 30);
+}
+
+function restartGame() {
+  if (!state.initial) return;
+  state.playbackToken++;
+  state.playback = false;
+  state.board = clone(state.initial);
+  state.moves = [];
+  state.playerMoves = [];
+  state.gameOver = false;
+  state.mode = "human";
+  state.hint = null;
+  state.replay = null;
+  $("replayPanel").classList.add("hidden");
+  $("message").textContent = "Board reset. Try a new strategy.";
+  renderMain();
+}
+
+function openReplay() {
+  if (!state.targetPath || state.playerMoves.length === 0) return;
+  state.replay = { ai: state.targetPath.slice(), human: state.playerMoves.slice(), step: 0 };
+  $("aiMoveCount").textContent = `${state.replay.ai.length} moves${state.targetFallback ? "*" : ""}`;
+  $("humanMoveCount").textContent = `${state.replay.human.length} moves`;
+  $("replayPanel").classList.remove("hidden");
+  renderReplay();
+  $("replayPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderReplay() {
+  if (!state.replay) return;
+  const replay = state.replay;
+  const maxStep = Math.max(replay.ai.length, replay.human.length);
+  replay.step = Math.max(0, Math.min(replay.step, maxStep));
+  renderBoard($("aiBoard"), boardAt(state.initial, replay.ai, replay.step));
+  renderBoard($("humanBoard"), boardAt(state.initial, replay.human, replay.step));
+  $("stepLabel").textContent = `STEP ${replay.step} / ${maxStep}`;
+  $("prevStep").disabled = replay.step === 0;
+  $("nextStep").disabled = replay.step === maxStep;
+  const aiColor = replay.step > 0 && replay.step <= replay.ai.length ? NAMES[replay.ai[replay.step - 1]] : replay.step > replay.ai.length ? "FINISHED" : "START";
+  const humanColor = replay.step > 0 && replay.step <= replay.human.length ? NAMES[replay.human[replay.step - 1]] : replay.step > replay.human.length ? "FINISHED" : "START";
+  $("replayText").textContent = `Step ${replay.step}: A* chose ${aiColor}; your play chose ${humanColor}.`;
+}
+
+$("newGame").addEventListener("click", newGame);
+$("restartGame").addEventListener("click", restartGame);
+$("undoButton").addEventListener("click", undoMove);
+$("hintButton").addEventListener("click", hintMove);
+$("replayButton").addEventListener("click", openReplay);
+$("closeReplayButton").addEventListener("click", () => $("replayPanel").classList.add("hidden"));
+$("prevStep").addEventListener("click", () => { if (state.replay) { state.replay.step--; renderReplay(); } });
+$("nextStep").addEventListener("click", () => { if (state.replay) { state.replay.step++; renderReplay(); } });
+$("greedySolveButton").addEventListener("click", () => {
+  const path = greedy(state.initial, seededRandom((state.seed ^ 0x6D2B79F5) >>> 0));
+  playSolver(path, "Greedy");
+});
+$("astarSolveButton").addEventListener("click", () => playSolver(state.targetPath, "A*"));
+
+document.addEventListener("keydown", (event) => {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  const target = event.target;
+  if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+  const keyMap = { r: 0, g: 1, b: 2, y: 3, c: 4, p: 5 };
+  const color = keyMap[event.key.toLowerCase()];
+  if (color !== undefined) play(color);
+});
+
+setupColors();
+newGame();
