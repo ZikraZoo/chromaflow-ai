@@ -1,68 +1,107 @@
-# 🎨 Color Flood — Human vs A*
+# 🎨 Terminal Color Flood Game
 
-A terminal-style Color Flood puzzle where you try to solve a board in as few moves as possible while competing against an A* search solver.
+A terminal-based Color Flood puzzle written in Python where a human player
+competes against search-based AI solvers.
 
-## 🎮 Play it in your browser
+The project started as a command-line game and was extended with a
+browser-playable version so that the game can be experienced without
+installing Python.
 
-**[▶ PLAY COLOR FLOOD](./web/index.html)**
+---
 
-When this repository is published with GitHub Pages, the browser game becomes a normal public link — no Python, VS Code, or installation is required.
+## 🎮 Play the Game
 
-## 🧠 What is inside?
+### 🌐 Play in Your Browser
 
-- **Flood-fill / BFS** to determine the connected flooded region.
-- **Greedy search** as a fast baseline solver.
-- **A\* search** to find an optimal path for the puzzle under the game's move model.
-- **Human vs AI comparison** using the same initial board.
-- **Side-by-side replay** showing the AI's choices against the player's choices.
-- **Seeded boards** so a puzzle can be reproduced.
-- Original Python terminal implementation plus a browser implementation.
+**[▶️ PLAY COLOR FLOOD](YOUR-GITHUB-PAGES-LINK-HERE)**
 
-## 📁 Project structure
+> The browser version recreates the core Color Flood gameplay and provides
+> an interactive way to play directly from a web browser.
 
-```text
-color-flood-ai/
-├── game.py                 # Original Python terminal game + benchmark suite
-├── web/
-│   ├── index.html          # Browser UI
-│   ├── style.css           # Terminal-inspired styling
-│   └── game.js             # Browser game + BFS/Greedy/A* logic
-├── .github/workflows/
-│   └── pages.yml           # Automatic GitHub Pages deployment
-└── README.md
-```
+---
 
-## 💻 Run the original Python version
+## 🧩 About the Game
 
-The original project is a terminal application. It uses `bext` for colored terminal output.
+Color Flood is a puzzle where the objective is to make the entire board
+one color.
+
+The game starts from the **top-left corner** of the board.
+
+On each move, the player selects a new color. The connected flooded region
+changes to that color and may absorb neighboring cells of the same color.
+
+The goal is to solve the board using as few moves as possible.
+
+---
+
+## ✨ Features
+
+### 👤 Human Player
+
+- Interactive terminal gameplay
+- Six available colors
+- Move counter
+- Board visualization using colored terminal output
+- Replay support
+- Human gameplay statistics
+
+### 🤖 AI Solvers
+
+The project contains multiple solving strategies:
+
+- **Greedy Solver**
+- **A\* Search Solver**
+
+The AI can automatically search for solutions and compare its performance
+against the human player.
+
+### 📊 Benchmarking
+
+The project includes a benchmark mode for running multiple generated
+boards and comparing solver performance.
+
+The benchmark can be used to study:
+
+- Number of moves required
+- Solver performance
+- Greedy vs A* behavior
+- Solution quality across different boards
+
+### 🧠 Search Algorithms
+
+The project uses graph-search concepts to solve the puzzle.
+
+#### Flood Fill / BFS
+
+The flooded region is identified using a breadth-first search starting from
+the top-left cell.
+
+#### Greedy Search
+
+The greedy solver selects the color that produces the best immediate
+expansion of the flooded region.
+
+#### A* Search
+
+The A* solver explores possible board states using a cost function and
+heuristic to search for a better solution.
+
+A node limit is used to prevent excessive search, with a fallback strategy
+when necessary.
+
+---
+
+## 🖥️ Terminal Version
+
+The original implementation is written entirely in Python and runs from
+the command line.
+
+### Requirements
+
+- Python 3
+- `bext`
+
+Install the dependency with:
 
 ```bash
 pip install bext
-python game.py
-```
-
-Benchmark mode:
-
-```bash
-python game.py --benchmark --trials 10
-```
-
-You can also test a fixed board seed:
-
-```bash
-python game.py --seed 12345
-```
-
-## 🤖 Algorithms
-
-The game starts from the top-left tile. A flood-fill finds all connected tiles of the current color. Choosing a new color repaints that connected component, potentially absorbing adjacent regions of the chosen color.
-
-The A* solver treats each board configuration as a state and uses the number of distinct colors remaining outside the flooded region as its heuristic. It explores candidate color changes until the board is solved, with a node limit and greedy fallback in the original implementation.
-
-## 🌐 Browser version
-
-The browser edition is deliberately dependency-free: plain HTML, CSS and JavaScript. That makes it suitable for GitHub Pages and means visitors only need a web browser.
-
-## 📌 Portfolio note
-
-The Python file is the original implementation. The `web/` version adapts the same game concepts to browser controls so a visitor can play the project immediately while still being able to inspect the Python source.
