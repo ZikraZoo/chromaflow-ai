@@ -20,6 +20,11 @@ const state = {
   playerMoves: [],
   gameOver: false,
   playback: false,
+  playbackPaused: false,
+  solverPath: null,
+  solverStep: 0,
+  stepRequested: false,
+  playbackWaiters: [],
   mode: "human",
   replay: null,
   generation: 0,
@@ -29,6 +34,48 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function wakePlaybackWaiters() {
+  const waiters = state.playbackWaiters.splice(0);
+  waiters.forEach((resolve) => resolve());
+}
+
+function renderSolverPlaybackControls() {
+  const panel = $("solverPlaybackControls");
+  panel.classList.toggle("hidden", !state.playback);
+  $("solverPauseButton").textContent = state.playbackPaused ? "Resume playback" : "Pause playback";
+  $("solverPauseButton").disabled = !state.playback;
+  $("solverStepBackButton").disabled = !state.playback || !state.playbackPaused || state.solverStep <= 0;
+  $("solverStepButton").disabled = !state.playback || !state.playbackPaused || !state.solverPath || state.solverStep >= state.solverPath.length;
+  $("solverPlaybackStatus").textContent = state.playback
+    ? `${state.mode} · MOVE ${state.solverStep} / ${state.solverPath.length} · ${state.playbackPaused ? "PAUSED" : "PLAYING"}`
+    : "READY";
+}
+
+// Wait for the selected delay. If paused, stop advancing until the player
+// resumes or requests exactly one move.
+async function waitForPlaybackAction(token) {
+  while (token === state.playbackToken) {
+    if (state.playbackPaused) {
+      if (state.stepRequested) {
+        state.stepRequested = false;
+        return true;
+      }
+      await new Promise((resolve) => state.playbackWaiters.push(resolve));
+      continue;
+    }
+
+    const interval = Math.max(100, Number($("solverSpeed").value) || 1200);
+    const deadline = Date.now() + interval;
+    while (token === state.playbackToken && !state.playbackPaused && Date.now() < deadline) {
+      await wait(Math.min(50, Math.max(1, deadline - Date.now())));
+    }
+    if (token !== state.playbackToken) return false;
+    if (state.playbackPaused) continue;
+    return true;
+  }
+  return false;
+}
 
 // A small seeded generator keeps a shown browser seed reproducible in this edition.
 function seededRandom(seed) {
@@ -284,6 +331,7 @@ function renderMain() {
   $("replayButton").disabled = !state.targetPath || state.playerMoves.length === 0 || state.playback;
   $("astarSolveButton").disabled = !state.targetPath || state.playback;
   $("greedySolveButton").disabled = state.playback;
+  renderSolverPlaybackControls();
 }
 
 function setupColors() {
@@ -354,37 +402,54 @@ function hintMove() {
 async function playSolver(path, label) {
   if (state.playback || !path || !path.length) return;
   const token = ++state.playbackToken;
+  wakePlaybackWaiters();
   state.playback = true;
+  state.playbackPaused = false;
+  state.solverPath = path.slice();
+  state.solverStep = 0;
+  state.stepRequested = false;
   state.mode = label;
   state.board = clone(state.initial);
   state.moves = [];
   state.gameOver = false;
   state.hint = null;
   $("replayPanel").classList.add("hidden");
-  $("message").textContent = `${label} is replaying its solution from the original board…`;
+  $("message").textContent = `${label} playback is starting. Adjust the speed, or pause and step through one move at a time.`;
   renderMain();
+  $("board").scrollIntoView({ behavior: "smooth", block: "center" });
 
-  for (const color of path) {
-    if (token !== state.playbackToken) return;
-    await wait(110);
-    if (token !== state.playbackToken) return;
-    state.board = flood(state.board, color);
-    state.moves.push(color);
+  while (state.solverStep < state.solverPath.length) {
+    const mayAdvance = await waitForPlaybackAction(token);
+    if (!mayAdvance || token !== state.playbackToken) return;
+
+    state.solverStep += 1;
+    state.board = boardAt(state.initial, state.solverPath, state.solverStep);
+    state.moves = state.solverPath.slice(0, state.solverStep);
     renderMain();
+    const playedColor = NAMES[state.solverPath[state.solverStep - 1]];
+    $("message").textContent = `${label} · move ${state.solverStep} of ${state.solverPath.length}: chose ${playedColor}. Pause to inspect this board or step backward to review earlier moves.`;
   }
 
+  if (token !== state.playbackToken) return;
   state.playback = false;
+  state.playbackPaused = false;
+  state.stepRequested = false;
   state.gameOver = isSolved(state.board);
+  wakePlaybackWaiters();
   renderMain();
   $("message").textContent = `${label} completed the board in ${state.moves.length} moves. Your human move sequence is retained for comparison.`;
   if (!state.gameOver) $("message").textContent += " The search returned an incomplete path; try a new board or inspect the solver limit.";
 }
-
 function newGame() {
   state.generation++;
   const generation = state.generation;
   state.playbackToken++;
   state.playback = false;
+  state.playbackPaused = false;
+  state.solverPath = null;
+  state.solverStep = 0;
+  state.stepRequested = false;
+  wakePlaybackWaiters();
   state.seed = Math.floor(Math.random() * 999999) + 1;
   state.initial = makeBoard(state.seed);
   state.board = clone(state.initial);
@@ -435,6 +500,11 @@ function restartGame() {
   if (!state.initial) return;
   state.playbackToken++;
   state.playback = false;
+  state.playbackPaused = false;
+  state.solverPath = null;
+  state.solverStep = 0;
+  state.stepRequested = false;
+  wakePlaybackWaiters();
   state.board = clone(state.initial);
   state.moves = [];
   state.playerMoves = [];
@@ -480,6 +550,28 @@ $("replayButton").addEventListener("click", openReplay);
 $("closeReplayButton").addEventListener("click", () => $("replayPanel").classList.add("hidden"));
 $("prevStep").addEventListener("click", () => { if (state.replay) { state.replay.step--; renderReplay(); } });
 $("nextStep").addEventListener("click", () => { if (state.replay) { state.replay.step++; renderReplay(); } });
+$("solverPauseButton").addEventListener("click", () => {
+  if (!state.playback) return;
+  state.playbackPaused = !state.playbackPaused;
+  if (!state.playbackPaused) wakePlaybackWaiters();
+  renderMain();
+});
+$("solverStepButton").addEventListener("click", () => {
+  if (!state.playback || !state.playbackPaused || !state.solverPath || state.solverStep >= state.solverPath.length) return;
+  state.stepRequested = true;
+  wakePlaybackWaiters();
+  renderMain();
+});
+$("solverStepBackButton").addEventListener("click", () => {
+  if (!state.playback || !state.playbackPaused || !state.solverPath || state.solverStep <= 0) return;
+  state.stepRequested = false;
+  state.solverStep--;
+  state.board = boardAt(state.initial, state.solverPath, state.solverStep);
+  state.moves = state.solverPath.slice(0, state.solverStep);
+  state.gameOver = false;
+  renderMain();
+  $("message").textContent = `Paused at move ${state.solverStep} of ${state.solverPath.length}. Use Step next to replay the next color.`;
+});
 $("greedySolveButton").addEventListener("click", () => {
   const path = greedy(state.initial, seededRandom((state.seed ^ 0x6D2B79F5) >>> 0));
   playSolver(path, "Greedy");

@@ -89,9 +89,27 @@
       <section class="panel side-card solver-card">
         <p class="eyebrow">04 / ALGORITHM LAB</p>
         <h2>Watch the solvers</h2>
-        <p class="side-copy">Replay a complete solution from the start of this board. Playback does not change your saved move sequence for comparison.</p>
+        <p class="side-copy">Watch each solver replay its solution from the original board. Slow it down, pause, or advance one move at a time. Your own move sequence stays saved for comparison.</p>
         <button id="greedySolveButton" class="button button-secondary full-button">Watch Greedy solve <span>↗</span></button>
         <button id="astarSolveButton" class="button button-primary full-button" disabled>Watch A* solve <span>↗</span></button>
+        <div class="solver-speed-control">
+          <label for="solverSpeed">Playback speed</label>
+          <select id="solverSpeed" aria-label="Solver playback speed">
+            <option value="2000">Very slow · 2 seconds per move</option>
+            <option value="1200" selected>Slow · 1.2 seconds per move</option>
+            <option value="700">Normal · 0.7 seconds per move</option>
+            <option value="300">Fast · 0.3 seconds per move</option>
+          </select>
+        </div>
+        <div id="solverPlaybackControls" class="solver-playback-controls hidden" aria-live="polite">
+          <p id="solverPlaybackStatus" class="solver-playback-status">READY</p>
+          <div class="solver-playback-actions">
+            <button id="solverStepBackButton" class="button button-quiet button-small" disabled>← Step back</button>
+            <button id="solverPauseButton" class="button button-secondary button-small" disabled>Pause</button>
+            <button id="solverStepButton" class="button button-primary button-small" disabled>Step next →</button>
+          </div>
+          <p class="tiny-note">Pause playback to inspect the board. While paused, use Step next or Step back to move one turn at a time.</p>
+        </div>
         <p class="tiny-note">A* is node-limited. If its search reaches the limit, it finishes the path with Greedy, so the displayed move count is a reference—not always a proven optimum.</p>
       </section>
 

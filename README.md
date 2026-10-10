@@ -12,7 +12,7 @@ The browser edition runs directly in a modern browser—no Python installation r
 
 The board is **15 columns × 8 rows** (120 tiles) and uses six colors. Flooding starts in the top-left corner. Choose a different color; the connected flooded region changes to that color and absorbs orthogonally adjacent tiles of the same color. Continue until the entire board is one connected color. The aim is to solve it in as few moves as possible.
 
-The browser edition supports mouse/touch color buttons and keyboard shortcuts (`R`, `G`, `B`, `Y`, `C`, `P`), undo, a Greedy hint, solver playback, and a step-by-step comparison view. It follows the Python game rules, but uses a seeded JavaScript random generator, so a browser seed does not recreate the exact same random board as Python.
+The browser edition supports mouse/touch color buttons and keyboard shortcuts (`R`, `G`, `B`, `Y`, `C`, `P`), undo, a Greedy hint, adjustable-speed solver playback with pause/resume and move-by-move stepping, and a step-by-step comparison view. It follows the Python game rules, but uses a seeded JavaScript random generator, so a browser seed does not recreate the exact same random board as Python.
 
 ## ✨ Features
 
