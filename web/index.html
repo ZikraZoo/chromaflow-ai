@@ -3,25 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Play Color Flood in your browser and compare your moves with Greedy and A* search solvers.">
+  <meta name="description" content="Play Chromaflow AI, a Color Flood puzzle with Greedy and A* search solvers, right in your browser.">
   <meta name="theme-color" content="#090d12">
-  <title>Color Flood — Human vs Search</title>
+  <title>Chromaflow AI — Color Flood &amp; Search Algorithms</title>
   <link rel="stylesheet" href="style.css">
   <script src="game.js" defer></script>
 </head>
 <body>
   <main class="page">
     <nav class="topline" aria-label="Project links">
-      <a class="brand" href="https://github.com/ZikraZoo/terminal-color-flood-game" target="_blank" rel="noreferrer">
+      <a class="brand" href="https://github.com/ZikraZoo/chromaflow-ai" target="_blank" rel="noreferrer">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span>TERMINAL COLOR FLOOD</span>
+        <span>CHROMAFLOW AI</span>
       </a>
       <span class="top-tag">PYTHON · SEARCH · BROWSER</span>
     </nav>
 
     <header class="hero">
-      <p class="eyebrow"><span class="live-dot"></span> ALGORITHM PLAYGROUND</p>
-      <h1>COLOR <span>FLOOD</span></h1>
+      <p class="eyebrow"><span class="live-dot"></span> COLOR PUZZLE · ALGORITHM PLAYGROUND</p>
+      <h1>CHROMA<span>FLOW</span> AI</h1>
       <p class="hero-copy">One board. Six colors. How efficiently can you take over every tile?</p>
       <div class="hero-actions">
         <button id="newGame" class="button button-primary">New board <span aria-hidden="true">↗</span></button>
@@ -47,58 +47,64 @@
         </div>
 
         <div class="board-wrap">
-          <div id="board" class="board" role="grid" aria-label="Color Flood board"></div>
+          <div id="board" class="board" role="grid" aria-label="Chromaflow AI game board"></div>
           <div class="board-caption"><span class="start-key" aria-hidden="true"></span> FLOOD STARTS IN THE TOP-LEFT CORNER</div>
-        </div>
-
-        <div class="play-controls">
-          <div class="control-heading">
-            <div>
-              <h3>Choose your next color</h3>
-              <p>Click a color or use its first-letter key.</p>
-            </div>
-            <button id="undoButton" class="button button-small button-quiet" disabled>↶ Undo</button>
-          </div>
-          <div id="colors" class="colors" aria-label="Choose a color"></div>
-          <div class="action-row">
-            <button id="hintButton" class="button button-secondary">Greedy hint</button>
-            <button id="replayButton" class="button button-secondary" disabled>Compare moves</button>
-          </div>
-          <p id="message" class="message" role="status" aria-live="polite">Choose a color to grow the flooded region.</p>
-          <p id="baselineNote" class="baseline-note">A* reference is being calculated in the background.</p>
         </div>
       </section>
 
-      <aside class="side-column">
-        <section class="panel side-card">
-          <p class="eyebrow">02 / YOUR OBJECTIVE</p>
-          <h2>Fill the whole board</h2>
-          <ol class="rules">
-            <li><span>01</span><p>Start from the outlined tile in the top-left.</p></li>
-            <li><span>02</span><p>Pick a new color. Matching neighbors join your flooded region.</p></li>
-            <li><span>03</span><p>Cover all <strong>120 tiles</strong> in as few moves as possible.</p></li>
-          </ol>
-        </section>
-
-        <section class="panel side-card solver-card">
-          <p class="eyebrow">03 / ALGORITHM LAB</p>
-          <h2>Watch the solvers</h2>
-          <p class="side-copy">Replay a complete solution from the start of this board. Playback does not change your saved move sequence for comparison.</p>
-          <button id="greedySolveButton" class="button button-secondary full-button">Watch Greedy solve <span>↗</span></button>
-          <button id="astarSolveButton" class="button button-primary full-button" disabled>Watch A* solve <span>↗</span></button>
-          <p class="tiny-note">A* is node-limited. If its search reaches the limit, it finishes the path with Greedy, so the displayed move count is a reference—not always a proven optimum.</p>
-        </section>
-
-        <section class="panel side-card mini-card">
-          <p class="eyebrow">KEYBOARD SHORTCUTS</p>
-          <div class="key-list"><kbd>R</kbd><span>Red</span><kbd>G</kbd><span>Green</span><kbd>B</kbd><span>Blue</span><kbd>Y</kbd><span>Yellow</span><kbd>C</kbd><span>Cyan</span><kbd>P</kbd><span>Purple</span></div>
+      <aside class="side-column" aria-label="Game controls">
+        <section class="panel control-card" aria-labelledby="controlsTitle">
+          <div class="panel-heading control-panel-heading">
+            <div>
+              <p class="eyebrow">02 / YOUR MOVE</p>
+              <h2 id="controlsTitle">Choose your next color</h2>
+            </div>
+            <button id="undoButton" class="button button-small button-quiet" disabled>↶ Undo</button>
+          </div>
+          <div class="play-controls">
+            <p class="control-help">Click a color below, or use its first-letter key.</p>
+            <div id="colors" class="colors" aria-label="Choose a color"></div>
+            <div class="action-row">
+              <button id="hintButton" class="button button-secondary">Greedy hint</button>
+              <button id="replayButton" class="button button-secondary" disabled>Compare moves</button>
+            </div>
+            <p id="message" class="message" role="status" aria-live="polite">Choose a color to grow the flooded region.</p>
+            <p id="baselineNote" class="baseline-note">A* reference is being calculated in the background.</p>
+          </div>
         </section>
       </aside>
     </div>
 
+    <section class="info-grid" aria-label="How to play and algorithm details">
+      <section class="panel side-card">
+        <p class="eyebrow">03 / YOUR OBJECTIVE</p>
+        <h2>Fill the whole board</h2>
+        <ol class="rules">
+          <li><span>01</span><p>Start from the outlined tile in the top-left.</p></li>
+          <li><span>02</span><p>Pick a new color. Matching neighbors join your flooded region.</p></li>
+          <li><span>03</span><p>Cover all <strong>120 tiles</strong> in as few moves as possible.</p></li>
+        </ol>
+      </section>
+
+      <section class="panel side-card solver-card">
+        <p class="eyebrow">04 / ALGORITHM LAB</p>
+        <h2>Watch the solvers</h2>
+        <p class="side-copy">Replay a complete solution from the start of this board. Playback does not change your saved move sequence for comparison.</p>
+        <button id="greedySolveButton" class="button button-secondary full-button">Watch Greedy solve <span>↗</span></button>
+        <button id="astarSolveButton" class="button button-primary full-button" disabled>Watch A* solve <span>↗</span></button>
+        <p class="tiny-note">A* is node-limited. If its search reaches the limit, it finishes the path with Greedy, so the displayed move count is a reference—not always a proven optimum.</p>
+      </section>
+
+      <section class="panel side-card mini-card">
+        <p class="eyebrow">KEYBOARD SHORTCUTS</p>
+        <p class="side-copy shortcut-copy">Use these keys if you prefer the keyboard.</p>
+        <div class="key-list"><kbd>R</kbd><span>Red</span><kbd>G</kbd><span>Green</span><kbd>B</kbd><span>Blue</span><kbd>Y</kbd><span>Yellow</span><kbd>C</kbd><span>Cyan</span><kbd>P</kbd><span>Purple</span></div>
+      </section>
+    </section>
+
     <section id="replayPanel" class="panel replay hidden" aria-labelledby="replayTitle">
       <div class="replay-heading">
-        <div><p class="eyebrow">04 / SIDE-BY-SIDE ANALYSIS</p><h2 id="replayTitle">A* reference vs your play</h2></div>
+        <div><p class="eyebrow">05 / SIDE-BY-SIDE ANALYSIS</p><h2 id="replayTitle">A* reference vs your play</h2></div>
         <button id="closeReplayButton" class="button button-quiet button-small">Close</button>
       </div>
       <div class="compare-boards">
@@ -114,9 +120,9 @@
     </section>
 
     <footer class="footer">
-      <span>Original terminal implementation: <a href="https://github.com/ZikraZoo/terminal-color-flood-game/blob/main/game.py" target="_blank" rel="noreferrer">game.py</a></span>
-      <span>Built with Python, JavaScript, HTML & CSS</span>
-      <a href="https://github.com/ZikraZoo/terminal-color-flood-game" target="_blank" rel="noreferrer">View source on GitHub ↗</a>
+      <span>Python implementation: <a href="https://github.com/ZikraZoo/chromaflow-ai/blob/main/game.py" target="_blank" rel="noreferrer">game.py</a></span>
+      <span>Built with Python, JavaScript, HTML &amp; CSS</span>
+      <a href="https://github.com/ZikraZoo/chromaflow-ai" target="_blank" rel="noreferrer">View Chromaflow AI on GitHub ↗</a>
     </footer>
   </main>
 </body>

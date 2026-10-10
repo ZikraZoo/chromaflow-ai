@@ -1,25 +1,25 @@
-# 🎨 Terminal Color Flood Game
+# 🌈 Chromaflow AI — Color Flood & Search Algorithms
 
-A Python terminal puzzle that lets you play Color Flood and compare your result with search-based AI solvers. The repository also includes a browser edition that runs without Python or installation.
+A Python terminal puzzle and browser-playable Color Flood game built to explore flood fill, Greedy search, A* search, and comparisons between human and algorithmic solutions.
 
 ## ▶️ Play in your browser
 
-**[Play Color Flood](https://zikrazoo.github.io/terminal-color-flood-game/)**
+**[Play Chromaflow AI](https://zikrazoo.github.io/chromaflow-ai/)**
 
-The website is published from `web/` with GitHub Pages. If the link is not live yet, see [GitHub Pages setup](#github-pages-setup) below.
+The browser edition runs directly in a modern browser—no Python installation required. The live board and color controls are grouped together, with the rules and solver explanations below the game.
 
 ## 🎮 Rules
 
-The board is **15 columns × 8 rows** (120 tiles) and uses six colors. Flooding starts in the top-left corner. Choose a different color; the connected flooded region changes to that color and absorbs orthogonally adjacent tiles of the same color. Continue until the entire board is one connected color. The aim is to solve it in as few moves as you can.
+The board is **15 columns × 8 rows** (120 tiles) and uses six colors. Flooding starts in the top-left corner. Choose a different color; the connected flooded region changes to that color and absorbs orthogonally adjacent tiles of the same color. Continue until the entire board is one connected color. The aim is to solve it in as few moves as possible.
 
-The browser edition supports color-button clicks and keyboard shortcuts (`R`, `G`, `B`, `Y`, `C`, `P`), undo, a Greedy hint, solver playback, and a step-by-step comparison view. It follows the Python game rules, but uses a seeded JavaScript random generator, so a browser seed does not recreate the exact same random board as Python.
+The browser edition supports mouse/touch color buttons and keyboard shortcuts (`R`, `G`, `B`, `Y`, `C`, `P`), undo, a Greedy hint, solver playback, and a step-by-step comparison view. It follows the Python game rules, but uses a seeded JavaScript random generator, so a browser seed does not recreate the exact same random board as Python.
 
 ## ✨ Features
 
 - **Interactive terminal game** with colored board rendering and move counting.
-- **Flood-fill using BFS** to find the connected region from the top-left tile.
+- **Flood fill using BFS** to find the connected region from the top-left tile.
 - **Greedy solver** that chooses a color for the largest immediate increase in the flooded region.
-- **A\* search solver** using a priority queue and a heuristic based on the distinct colors remaining outside the flooded region.
+- **A* search solver** using a priority queue and a heuristic based on the distinct colors remaining outside the flooded region.
 - **Bounded search:** A* stops after a node limit and completes the remaining path with Greedy if necessary. In that case, the returned path is a useful reference, but it is **not guaranteed to be globally optimal**.
 - **Benchmark mode** to compare Greedy and A* move counts and runtime across generated boards. Existing human results are included when matching records are present.
 - **Human-session logging** to `human_data.json` for local benchmark comparisons.
@@ -98,7 +98,7 @@ The Python implementation caps search at 15,000 expanded nodes and uses a Greedy
 ## 📁 Repository layout
 
 ```text
-terminal-color-flood-game/
+chromaflow-ai/
 ├── game.py                    # Original Python game and solvers
 ├── requirements.txt            # Python dependency
 ├── README.md
@@ -118,12 +118,12 @@ terminal-color-flood-game/
 
 1. Push the repository to GitHub on the `main` branch.
 2. Open **Settings → Pages** and set the build/deployment source to **GitHub Actions**.
-3. Check the **Actions** tab for the `Deploy Color Flood to GitHub Pages` workflow. The workflow publishes the contents of `web/`.
-4. Once deployment succeeds, open the Play link at the top of this README.
+3. Check the **Actions** tab for the `Deploy Chromaflow AI to GitHub Pages` workflow. The workflow publishes the contents of `web/`.
+4. Once deployment succeeds, open the [Chromaflow AI browser game](https://zikrazoo.github.io/chromaflow-ai/).
 
-**Repository visibility matters:** GitHub Pages on GitHub Free requires the repository to be public. If this repo remains private, publishing Pages requires a plan that supports Pages for private repositories. A published Pages site is publicly accessible, so do not publish secrets or private data in the deployed files.
+**Repository visibility matters:** GitHub Pages on GitHub Free requires the repository to be public. A published Pages site is publicly accessible, so do not publish secrets or private data in the deployed files.
 
-If deployment still fails, open the failed workflow run in **Actions** and read the first red step. The workflow log gives the precise error; the red icon by itself does not identify the cause.
+If deployment fails, open the failed workflow run in **Actions** and read the first red step. The workflow log gives the precise error; the red icon by itself does not identify the cause.
 
 ## 🛠️ Technologies
 

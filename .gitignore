@@ -1,13 +1,8 @@
-# Python artifacts
+# Python bytecode and local environments
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 
-# Local human gameplay statistics
+# Local game telemetry
 human_data.json
-
-# OS/editor files
-.DS_Store
-Thumbs.db
-.vscode/

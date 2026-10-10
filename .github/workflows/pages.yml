@@ -1,4 +1,4 @@
-name: Deploy Color Flood to GitHub Pages
+name: Deploy Chromaflow AI to GitHub Pages
 
 on:
   push:

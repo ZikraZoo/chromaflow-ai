@@ -162,3 +162,112 @@ kbd { display: inline-flex; justify-content: center; align-items: center; min-wi
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+
+/* Chromaflow AI layout: keep the mouse controls beside the board. */
+.side-column {
+  display: block;
+  min-width: 0;
+  align-self: stretch;
+}
+.control-card {
+  position: sticky;
+  top: 14px;
+  overflow: hidden;
+}
+.control-panel-heading {
+  padding: 19px 18px 16px;
+}
+.control-panel-heading h2 {
+  font-size: 1.05rem;
+}
+.control-card .play-controls {
+  padding: 15px 18px 18px;
+  border-top: 0;
+}
+.control-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: .76rem;
+}
+.control-card .colors {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 13px 0;
+}
+.control-card .color-btn {
+  min-height: 43px;
+  padding: 8px 9px;
+  font-size: .7rem;
+}
+.control-card .action-row {
+  gap: 7px;
+}
+.control-card .action-row .button {
+  flex: 1 1 auto;
+  padding-inline: 10px;
+  font-size: .72rem;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin-top: 18px;
+  align-items: start;
+}
+.info-grid .side-card {
+  height: 100%;
+}
+.info-grid .side-card h2 {
+  margin-bottom: 13px;
+}
+.info-grid .mini-card {
+  grid-column: auto;
+}
+.shortcut-copy {
+  margin: 8px 0 0;
+}
+.info-grid .key-list {
+  grid-template-columns: repeat(6, auto);
+  justify-content: space-between;
+}
+
+@media (max-width: 920px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .control-card {
+    position: static;
+  }
+  .control-card .colors {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .info-grid .mini-card {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 600px) {
+  .control-panel-heading {
+    padding: 16px 13px 13px;
+  }
+  .control-card .play-controls {
+    padding: 14px 13px 15px;
+  }
+  .control-card .colors {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .info-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 13px;
+  }
+  .info-grid .mini-card {
+    grid-column: auto;
+  }
+  .info-grid .key-list {
+    grid-template-columns: repeat(6, auto);
+  }
+}
